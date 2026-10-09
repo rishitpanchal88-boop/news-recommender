@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} - Live News{% endblock %}
+{% block content %}
+
+<div class="article-detail live-detail" id="articleContainer">
+    <!-- Reader Toolbar -->
+    <div class="reader-toolbar">
+        <div class="live-detail-header">
+            <span class="badge badge-live">● LIVE STREAM</span>
+            {% if article.category %}
+                <span class="badge">{{ article.category }}</span>
+            {% endif %}
+        </div>
+
+        <div class="reader-actions">
+            <div class="font-size-controls" title="Adjust text size">
+                <button type="button" class="btn-text-size" onclick="adjustFontSize(-1)" title="Smaller text">A-</button>
+                <button type="button" class="btn-text-size" onclick="resetFontSize()" title="Reset size">A</button>
+                <button type="button" class="btn-text-size" onclick="adjustFontSize(1)" title="Larger text">A+</button>
+            </div>
+
+            {% set key = 'live:' ~ article.live_id %}
+            {% set is_saved = key in user_bookmark_keys %}
+            <button type="button" 
+                    class="btn-bookmark-action {{ 'bookmarked' if is_saved else '' }}"
+                    onclick="toggleBookmark(event, this, '{{ key }}', {title: '{{ article.title|default('', true)|replace("'", "\\'")|e }}', source_name: '{{ article.source_name|default('', true)|replace("'", "\\'")|e }}', url_to_image: '{{ article.url_to_image|default('', true)|e }}', url: '{{ article.url|default('', true)|e }}', category: '{{ article.category|default('', true)|e }}'})"
+                    title="Save to Reading List">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                <span class="btn-bookmark-text">{{ 'Saved' if is_saved else 'Save' }}</span>
+            </button>
+
+            <button type="button" class="btn-share-action" onclick="shareArticle('{{ article.title|replace("'", "\\'")|e }}', window.location.href)" title="Share article">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                <span>Share</span>
+            </button>
+        </div>
+    </div>
+
+    <h1>{{ article.title }}</h1>
+    <p class="source">
+        <strong>{{ article.source_name }}</strong>
+        {% if article.author %} · {{ article.author }}{% endif %}
+        {% if article.published_at %} · {{ article.published_at[:10] }}{% endif %}
+        {% set wc = (article.description|default('') ~ ' ' ~ article.content|default(''))|length / 5 %}
+        <span class="reading-time-pill">⏱️ {{ [1, (wc / 150)|round(0, 'ceil')|int]|max }} min read</span>
+    </p>
+
+    {% include "tts_player.html" %}
+
+    {% if article.url_to_image %}
+        <img src="{{ article.url_to_image }}" alt="" class="detail-img" loading="lazy" onerror="this.style.display='none'">
+    {% endif %}
+
+    <div class="body-text" id="articleBody">
+        {% if article.description %}
+            <p>{{ article.description }}</p>
+        {% endif %}
+        {% if article.content %}
+            <p>{{ article.content }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Read Full Article on Our Site -->
+    {% if article.url %}
+    <div style="margin-top: 24px;">
+        <a href="{{ url_for('full_live_article', live_id=article.live_id) }}" class="btn-read-full">
+            Read Full Extracted Article &rarr;
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Similar Live News Coverage (live → live chaining) -->
+{% if similar_live %}
+<section class="related-news-section">
+    <h2>Similar Live Coverage</h2>
+    <p class="source" style="margin-bottom: 14px;">
+        Other live news stories on a similar topic — click through to keep exploring.
+    </p>
+    <div class="article-grid">
+        {% for rec in similar_live %}
+        <a class="card live-card" href="{{ url_for('live_article_detail', live_id=rec.live_id) }}">
+            {% if rec.url_to_image %}
+                <img src="{{ rec.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+            {% endif %}
+            <div class="card-body">
+                <span class="badge badge-live">● LIVE</span>
+                <h3>{{ rec.title }}</h3>
+                <p class="source">
+                    {{ rec.source_name }} · {{ rec.published_at[:10] if rec.published_at else "" }}
+                    <br>
+                    Similarity: {{ (rec.similarity_score * 100)|round(1) }}%
+                </p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Related archive articles from the dataset (content-based matches) -->
+{% if similar_articles %}
+<section class="related-news-section">
+    <h2>Related Articles From Our Archive</h2>
+    <p class="source" style="margin-bottom: 14px;">
+        Archived stories that match this one — these open from the local dataset,
+        so they stay available even if live news expires.
+    </p>
+    <div class="article-grid">
+        {% for rec in similar_articles %}
+        <a class="card" href="{{ url_for('article_detail', article_id=rec.article_id) }}">
+            {% if rec.url_to_image %}
+                <img src="{{ rec.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+            {% endif %}
+            <div class="card-body">
+                <span class="badge">{{ rec.category or "Archive" }}</span>
+                <h3>{{ rec.title }}</h3>
+                <p class="source">
+                    {{ rec.source_name }} · {{ rec.published_at[:10] if rec.published_at else "" }}
+                    <br>
+                    Similarity: {{ (rec.similarity_score * 100)|round(1) }}%
+                </p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<script>
+let currentFontSizeLevel = 0;
+function adjustFontSize(delta) {
+    const body = document.getElementById("articleBody");
+    if (!body) return;
+    currentFontSizeLevel = Math.max(-1, Math.min(2, currentFontSizeLevel + delta));
+    body.className = "body-text";
+    if (currentFontSizeLevel === -1) body.classList.add("text-sm");
+    else if (currentFontSizeLevel === 1) body.classList.add("text-lg");
+    else if (currentFontSizeLevel === 2) body.classList.add("text-xl");
+}
+function resetFontSize() {
+    currentFontSizeLevel = 0;
+    const body = document.getElementById("articleBody");
+    if (body) body.className = "body-text";
+}
+
+function shareArticle(title, url) {
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast("Article link copied to clipboard! 📋", "success");
+        }).catch(() => {
+            prompt("Copy article link:", url);
+        });
+    }
+}
+</script>
+
+{% endblock %}

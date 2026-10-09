@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}{{ display_title }}{% endblock %}
+{% block content %}
+    <article class="article-detail" id="articleContainer">
+        <!-- Top Toolbar: Language, Reading controls, Share & Bookmark -->
+        <div class="reader-toolbar">
+            <div class="lang-bar">
+                <label for="langSelect">🌐 Language:</label>
+                <select id="langSelect" onchange="location.href='{{ url_for('article_detail', article_id=article.article_id) }}?lang=' + this.value">
+                    {% for code, name in languages %}
+                        <option value="{{ code }}" {% if code == current_lang %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="reader-actions">
+                <div class="font-size-controls" title="Adjust text size">
+                    <button type="button" class="btn-text-size" onclick="adjustFontSize(-1)" title="Smaller text">A-</button>
+                    <button type="button" class="btn-text-size" onclick="resetFontSize()" title="Reset size">A</button>
+                    <button type="button" class="btn-text-size" onclick="adjustFontSize(1)" title="Larger text">A+</button>
+                </div>
+
+                {% set key = 'ds:' ~ article.article_id %}
+                {% set is_saved = (key in user_bookmark_keys) or (article.article_id|string in user_bookmark_keys) %}
+                <button type="button" 
+                        class="btn-bookmark-action {{ 'bookmarked' if is_saved else '' }}"
+                        onclick="toggleBookmark(event, this, '{{ key }}', {article_id: {{ article.article_id }}, title: '{{ display_title|replace("'", "\\'")|e }}', source_name: '{{ article.source_name|default('', true)|replace("'", "\\'")|e }}', url_to_image: '{{ article.url_to_image|default('', true)|e }}', url: '{{ article.url|default('', true)|e }}', category: '{{ article.category|default('', true)|e }}'})"
+                        title="Save to Reading List">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                    <span class="btn-bookmark-text">{{ 'Saved' if is_saved else 'Save' }}</span>
+                </button>
+
+                <button type="button" class="btn-share-action" onclick="shareArticle('{{ display_title|replace("'", "\\'")|e }}', window.location.href)" title="Share article">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    <span>Share</span>
+                </button>
+            </div>
+        </div>
+
+        {% if translation_failed %}
+            <p class="hint">Translation service unavailable right now (needs an internet connection) -- showing the original English text.</p>
+        {% endif %}
+
+        <h1>{{ display_title }}</h1>
+        <p class="source">
+            <strong>{{ article.source_name }}</strong> &middot; {{ article.category }} &middot; {{ article.published_at[:10] if article.published_at else "" }}
+            {% set wc = (display_desc | default('') | length / 5) | int %}
+            <span class="reading-time-pill">⏱️ {{ [1, (wc / 150)|round(0, 'ceil')|int]|max }} min read</span>
+        </p>
+
+        {% include "tts_player.html" %}
+
+        {% if article.url_to_image %}
+            <img src="{{ article.url_to_image }}" alt="" class="detail-img" loading="lazy" onerror="this.style.display='none'">
+        {% endif %}
+
+        <div class="body-text" id="articleBody">
+            <p>{{ display_desc }}</p>
+        </div>
+
+        <p><a href="{{ url_for('full_article', article_id=article.article_id) }}" class="btn-read-full">Read full coverage on publisher site &rarr;</a></p>
+
+        {% if current_user.is_authenticated %}
+        <div class="reactions">
+            <span class="reactions-label">Was this article helpful?</span>
+            <form method="POST" action="{{ url_for('react', article_id=article.article_id, action='like') }}" style="display:inline;">
+                <button type="submit" class="reaction-btn {{ 'active' if user_reaction == 'like' }}">👍 Helpful</button>
+            </form>
+            <form method="POST" action="{{ url_for('react', article_id=article.article_id, action='dislike') }}" style="display:inline;">
+                <button type="submit" class="reaction-btn {{ 'active' if user_reaction == 'dislike' }}">👎 Not for me</button>
+            </form>
+        </div>
+        {% endif %}
+    </article>
+
+    {% if recommendations %}
+    <section class="recommendations">
+        <h2>Recommended for you</h2>
+        <div class="article-grid">
+            {% for rec in recommendations %}
+            <a class="card" href="{{ url_for('article_detail', article_id=rec.article_id) }}">
+                {% if rec.url_to_image %}
+                    <img src="{{ rec.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+                {% endif %}
+                <div class="card-body">
+                    <h3>{{ rec.title }}</h3>
+                    <p class="source">{{ rec.source_name }} &middot; similarity {{ "%.2f"|format(rec.similarity_score) }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if live_recommendations %}
+    <section class="recommendations">
+        <h2>Live updates on this topic</h2>
+        <p class="hint">Latest stories from the web matched to this article using the same TF-IDF recommendation model.</p>
+        <div class="article-grid">
+            {% for rec in live_recommendations %}
+            <a class="card live-card" href="{{ url_for('live_article_detail', live_id=rec.live_id) }}">
+                {% if rec.url_to_image %}
+                    <img src="{{ rec.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+                {% endif %}
+                <div class="card-body">
+                    <span class="badge badge-live">● LIVE</span>
+                    <h3>{{ rec.title }}</h3>
+                    <p class="source">{{ rec.source_name }} &middot; similarity {{ "%.2f"|format(rec.similarity_score) }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+<script>
+let currentFontSizeLevel = 0;
+function adjustFontSize(delta) {
+    const body = document.getElementById("articleBody");
+    if (!body) return;
+    currentFontSizeLevel = Math.max(-1, Math.min(2, currentFontSizeLevel + delta));
+    body.className = "body-text";
+    if (currentFontSizeLevel === -1) body.classList.add("text-sm");
+    else if (currentFontSizeLevel === 1) body.classList.add("text-lg");
+    else if (currentFontSizeLevel === 2) body.classList.add("text-xl");
+}
+function resetFontSize() {
+    currentFontSizeLevel = 0;
+    const body = document.getElementById("articleBody");
+    if (body) body.className = "body-text";
+}
+
+function shareArticle(title, url) {
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast("Article link copied to clipboard! 📋", "success");
+        }).catch(() => {
+            prompt("Copy article link:", url);
+        });
+    }
+}
+</script>
+
+{% endblock %}

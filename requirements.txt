@@ -1,0 +1,5 @@
+# Root entry point for auto-detecting build systems (Railway NixPACKS,
+# Heroku, Render auto-detect, GCP Cloud Run).  They only look for
+# requirements.txt at the repository root; the canonical pinned list
+# lives in flask_app/requirements.txt.
+-r flask_app/requirements.txt

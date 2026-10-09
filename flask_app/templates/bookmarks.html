@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}My Reading List - News Recommender{% endblock %}
+{% block content %}
+
+<div class="bookmarks-header">
+    <div class="bookmarks-title-wrap">
+        <h1>🔖 My Reading List</h1>
+        <p class="landing-sub">Your personal archive of saved news stories and verified articles.</p>
+    </div>
+    <div class="bookmarks-count-badge">
+        <span>{{ bookmarks|length }} saved article{{ 's' if bookmarks|length != 1 else '' }}</span>
+    </div>
+</div>
+
+{% if bookmarks %}
+<div class="bookmarks-filter-bar">
+    <input type="text" id="bookmarkFilter" placeholder="Filter your saved articles..." onkeyup="filterBookmarks()">
+</div>
+
+<div class="article-grid" id="bookmarksGrid">
+    {% for item in bookmarks %}
+    <div class="card bookmark-card-item" data-title="{{ item.title|lower }}" data-source="{{ item.source_name|lower }}">
+        {% if item.url_to_image %}
+            <img src="{{ item.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+        {% endif %}
+        <div class="card-body">
+            <div class="card-badges">
+                {% if item.is_live %}
+                    <span class="badge badge-live">● LIVE</span>
+                {% elif item.category %}
+                    <span class="badge">{{ item.category }}</span>
+                {% endif %}
+                <span class="badge badge-saved-date">Saved {{ item.saved_at }}</span>
+            </div>
+            <h3><a href="{{ item.detail_url }}">{{ item.title }}</a></h3>
+            <p class="source">{{ item.source_name }}</p>
+            
+            <div class="bookmark-card-actions">
+                <a href="{{ item.detail_url }}" class="btn-read-sm">Read Story &rarr;</a>
+                <form method="POST" action="{{ url_for('remove_bookmark', interaction_id=item.id) }}" style="display:inline;" onsubmit="return confirm('Remove this article from your reading list?');">
+                    <button type="submit" class="btn-remove-bookmark" title="Remove from list">✕ Remove</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-bookmarks">
+    <div class="empty-icon">📖</div>
+    <h2>Your reading list is empty</h2>
+    <p>Bookmark any article while browsing using the bookmark button to save it here for later.</p>
+    <a href="{{ url_for('home') }}" class="cta-button" style="display:inline-block; margin-top: 16px;">Explore Top Stories</a>
+</div>
+{% endif %}
+
+<script>
+function filterBookmarks() {
+    var input = document.getElementById("bookmarkFilter");
+    var filter = input.value.toLowerCase();
+    var cards = document.querySelectorAll(".bookmark-card-item");
+
+    cards.forEach(function(card) {
+        var title = card.getAttribute("data-title") || "";
+        var source = card.getAttribute("data-source") || "";
+        if (title.indexOf(filter) > -1 || source.indexOf(filter) > -1) {
+            card.style.display = "";
+        } else {
+            card.style.display = "none";
+        }
+    });
+}
+</script>
+
+{% endblock %}

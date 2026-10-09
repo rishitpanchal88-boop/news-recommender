@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found (404) - News Recommender{% endblock %}
+{% block content %}
+
+<div class="error-page">
+    <div class="error-code">404</div>
+    <h1>Article or Page Not Found</h1>
+    <p class="landing-sub">The story you're looking for might have moved, expired from live cache, or the link may be outdated.</p>
+
+    <div class="error-actions">
+        <a href="{{ url_for('home') }}" class="cta-button">Back to Home</a>
+        <a href="{{ url_for('search') }}" class="btn-preferences" style="background: var(--surface); border: 1px solid var(--line-strong);">Search News</a>
+    </div>
+
+    <div class="error-categories">
+        <p class="hint">Or browse by popular topics:</p>
+        <div class="category-pills">
+            {% for label, value in nav_categories %}
+                <a href="{{ url_for('category', category_value=value) }}" class="cat-pill">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

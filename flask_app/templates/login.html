@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Log In - News Recommender{% endblock %}
+{% block content %}
+    <div class="auth-form">
+        <h1>Welcome Back</h1>
+        <p class="landing-sub" style="margin-bottom: 24px;">Log in to access your personalised news feed, reading list, and AI fact-checker.</p>
+        <form method="POST">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="name@example.com" required autofocus>
+            
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required>
+            
+            <button type="submit" class="cta-button" style="width: 100%; margin-top: 8px;">Log In</button>
+        </form>
+        <p style="margin-top: 20px; text-align: center;">Don't have an account? <a href="{{ url_for('signup') }}" style="font-weight: 600; color: var(--accent);">Create an account</a></p>
+    </div>
+{% endblock %}

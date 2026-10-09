@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} - News Recommender{% endblock %}
+{% block content %}
+
+    {% macro live_card(article) -%}
+    {% set key = 'live:' ~ article.live_id %}
+    {% set is_saved = key in user_bookmark_keys %}
+    <div class="card live-card">
+        <button type="button" 
+                class="card-bookmark-btn {{ 'bookmarked' if is_saved else '' }}" 
+                title="{{ 'Remove from reading list' if is_saved else 'Save to reading list' }}"
+                onclick="toggleBookmark(event, this, '{{ key }}', {title: '{{ article.title|default('', true)|replace("'", "\\'")|e }}', source_name: '{{ article.source_name|default('', true)|replace("'", "\\'")|e }}', url_to_image: '{{ article.url_to_image|default('', true)|e }}', url: '{{ article.url|default('', true)|e }}', category: '{{ article.category|default('', true)|e }}'})"
+                aria-label="Save to bookmarks">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+        </button>
+        <a class="card-link" href="{{ url_for('live_article_detail', live_id=article.live_id) }}">
+            <div class="card-img-wrap">
+                {% if article.url_to_image %}
+                    <img
+                        data-src="{{ article.url_to_image }}"
+                        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                        alt=""
+                        class="card-img lazy-img"
+                        width="400" height="220"
+                        decoding="async"
+                        onerror="this.closest('.card-img-wrap').classList.add('img-error'); this.remove();"
+                    >
+                {% else %}
+                    <div class="card-img-placeholder">📰</div>
+                {% endif %}
+                <div class="card-img-shimmer"></div>
+            </div>
+            <div class="card-body">
+                <div class="card-badges">
+                    <span class="badge badge-live">● LIVE</span>
+                    <span class="badge badge-checking"
+                          data-verify-title="{{ article.title|default('', true)|e }}"
+                          data-verify-desc="{{ article.description|default('', true)|e }}"
+                          data-verify-source="{{ article.source_name|default('', true)|e }}">CHECKING...</span>
+                </div>
+                <h3>{{ article.title }}</h3>
+                <p class="source">{{ article.source_name }} · {{ article.published_at[:10] if article.published_at else "Live" }}</p>
+            </div>
+        </a>
+    </div>
+    {%- endmacro %}
+
+    {% macro dataset_card(article) -%}
+    {% set key = 'ds:' ~ article.article_id %}
+    {% set is_saved = (key in user_bookmark_keys) or (article.article_id|string in user_bookmark_keys) %}
+    <div class="card">
+        <button type="button" 
+                class="card-bookmark-btn {{ 'bookmarked' if is_saved else '' }}" 
+                title="{{ 'Remove from reading list' if is_saved else 'Save to reading list' }}"
+                onclick="toggleBookmark(event, this, '{{ key }}', {article_id: {{ article.article_id }}, title: '{{ article.title|default('', true)|replace("'", "\\'")|e }}', source_name: '{{ article.source_name|default('', true)|replace("'", "\\'")|e }}', url_to_image: '{{ article.url_to_image|default('', true)|e }}', url: '{{ article.url|default('', true)|e }}', category: '{{ article.category|default('', true)|e }}'})"
+                aria-label="Save to bookmarks">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+        </button>
+        <a class="card-link" href="{{ url_for('article_detail', article_id=article.article_id) }}">
+            <div class="card-img-wrap">
+                {% if article.url_to_image %}
+                    <img
+                        data-src="{{ article.url_to_image }}"
+                        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                        alt=""
+                        class="card-img lazy-img"
+                        width="400" height="220"
+                        decoding="async"
+                        onerror="this.closest('.card-img-wrap').classList.add('img-error'); this.remove();"
+                    >
+                {% else %}
+                    <div class="card-img-placeholder">📄</div>
+                {% endif %}
+                <div class="card-img-shimmer"></div>
+            </div>
+            <div class="card-body">
+                <div class="card-badges">
+                    {% set verdict = (article.credibility_label or article.fake_news_prediction or '')|lower %}
+                    {% if verdict == 'verified source' %}
+                        <span class="badge badge-verified-source">✔ Verified Source</span>
+                    {% elif verdict == 'real' %}
+                        <span class="badge badge-real">✔ Real</span>
+                    {% elif verdict == 'fake' %}
+                        <span class="badge badge-fake">✖ Fake</span>
+                    {% endif %}
+                    {% if article.category %}
+                        <span class="badge">{{ article.category }}</span>
+                    {% endif %}
+                </div>
+                <h3>{{ article.title }}</h3>
+                <p class="source">{{ article.source_name }} &middot; {{ article.published_at[:10] if article.published_at else "" }}</p>
+            </div>
+        </a>
+    </div>
+    {%- endmacro %}
+
+    {% if top_news %}
+    <section>
+        <div class="section-title-wrap">
+            <h1>Top Headlines</h1>
+            <span class="live-pulse-badge"><span class="pulse-dot"></span> Live Stream</span>
+        </div>
+        <div class="article-grid">
+            {% for article in top_news %}
+            {% if article.is_live is defined and article.is_live %}
+                {{ live_card(article) }}
+            {% else %}
+                {{ dataset_card(article) }}
+            {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section style="margin-top: 36px;">
+        <div class="section-title-wrap">
+            <h1>{{ heading }}</h1>
+        </div>
+
+        {% if is_search and not articles %}
+            <div class="empty-search">
+                <p>No articles matched <strong>"{{ query }}"</strong>. Try browsing categories below or searching other keywords.</p>
+                <div class="category-pills" style="margin-top: 16px;">
+                    {% for label, value in nav_categories %}
+                        <a href="{{ url_for('category', category_value=value) }}" class="cat-pill">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if live_count is defined and live_count %}
+            <p class="hint">Showing {{ live_count }} latest live / web news update(s) at the top, plus archive matches below.</p>
+        {% endif %}
+
+        <div class="article-grid">
+            {% for article in articles %}
+            {% if article.is_live is defined and article.is_live %}
+                {{ live_card(article) }}
+            {% else %}
+                {{ dataset_card(article) }}
+            {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+<script>
+(function(){
+    var badges = document.querySelectorAll('.badge-checking');
+    if (!badges.length) return;
+
+    var TRUSTED = ["reuters", "associated press", "bbc news", "bbc", "cnn", "the new york times", "the washington post", "the guardian", "al jazeera english", "bloomberg", "the wall street journal", "nbc news", "abc news", "cbs news", "npr", "usa today", "time", "the economist", "politico", "axios", "ap news", "afp", "the hindu", "times of india", "ndtv", "hindustan times", "india today", "mint"];
+
+    function verifyOne(badge) {
+        var title = badge.getAttribute('data-verify-title') || '';
+        var desc  = badge.getAttribute('data-verify-desc')  || '';
+        var source = (badge.getAttribute('data-verify-source') || '').toLowerCase().trim();
+
+        // Fast client check for trusted source
+        if (source && TRUSTED.indexOf(source) !== -1) {
+            badge.textContent = '✔ Verified Source';
+            badge.className = 'badge badge-verified-source';
+            return;
+        }
+
+        if (!title && !desc) { 
+            badge.textContent = '? Unknown'; 
+            badge.className = 'badge badge-unverified'; 
+            return; 
+        }
+
+        fetch('/verify-article', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: title, description: desc, source_name: source})
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            var label = (d.label || '').toLowerCase();
+            if (d.classifier === 'Verified Source' || label === 'verified source') {
+                badge.textContent = '✔ Verified Source';
+                badge.className = 'badge badge-verified-source';
+            } else if (label === 'real') {
+                badge.textContent = '✔ Real';
+                badge.className = 'badge badge-real';
+            } else if (label === 'fake') {
+                badge.textContent = '✖ Fake';
+                badge.className = 'badge badge-fake';
+            } else {
+                badge.textContent = '? Unverified';
+                badge.className = 'badge badge-unverified';
+            }
+        })
+        .catch(function(){
+            badge.textContent = '? Unverified';
+            badge.className = 'badge badge-unverified';
+        });
+    }
+
+    var queue = Array.prototype.slice.call(badges);
+    var CONCURRENCY = 2;
+    var running = 0;
+    function next() {
+        if (!queue.length) return;
+        running++;
+        var b = queue.shift();
+        verifyOne(b);
+        setTimeout(function(){ running--; next(); }, 600);
+    }
+    for (var i = 0; i < Math.min(CONCURRENCY, queue.length); i++) next();
+})();
+</script>
+
+<script>
+// ---------- IntersectionObserver lazy image loader ----------
+(function () {
+    var imgs = document.querySelectorAll('img.lazy-img');
+    if (!imgs.length) return;
+
+    function loadImg(img) {
+        var src = img.getAttribute('data-src');
+        if (!src) return;
+        img.src = src;
+        img.removeAttribute('data-src');
+        img.addEventListener('load', function () {
+            // Hide shimmer once real image is loaded
+            var shimmer = img.closest('.card-img-wrap') && img.closest('.card-img-wrap').querySelector('.card-img-shimmer');
+            if (shimmer) shimmer.style.display = 'none';
+            img.classList.add('img-loaded');
+        }, { once: true });
+    }
+
+    if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    loadImg(entry.target);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { rootMargin: '200px 0px' }); // start loading 200px before entering viewport
+        imgs.forEach(function (img) { observer.observe(img); });
+    } else {
+        // Fallback: load all immediately
+        imgs.forEach(loadImg);
+    }
+})();
+</script>
+
+{% endblock %}

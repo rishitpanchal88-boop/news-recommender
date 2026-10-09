@@ -1,0 +1,25 @@
+# Render Blueprint for News Recommender
+# NOTE: the app needs ~700 MB RAM at runtime, so the web service must be
+# on the "standard" plan (2 GB). The free/starter plans (512 MB) will crash.
+# The database is an external Neon Postgres (set DATABASE_URL in the dashboard).
+services:
+  - type: web
+    name: news-recommender
+    runtime: python
+    plan: standard
+    buildCommand: pip install -r flask_app/requirements.txt
+    startCommand: gunicorn app:app --chdir flask_app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: NEWS_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Go Premium{% endblock %}
+{% block content %}
+    <div class="auth-form">
+        <h1>Go Premium</h1>
+        {% if current_user.is_premium %}
+            <p>You're already a premium subscriber. Thanks for supporting us!</p>
+        {% else %}
+            <p>₹249/month for unlimited access to every article, ad-free.</p>
+            <form method="POST" action="{{ url_for('premium_subscribe') }}">
+                <button type="submit">Subscribe (demo checkout)</button>
+            </form>
+            <p class="hint">This is a simulated checkout for demo purposes -- no real payment is processed.</p>
+        {% endif %}
+    </div>
+{% endblock %}

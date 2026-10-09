@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Premium News Dashboard{% endblock %}
+{% block content %}
+
+{# ── Macro for static sections (Regional / Trending) ── #}
+{% macro static_card(article) %}
+    {% if article.is_live is defined and article.is_live %}
+        {% set card_url = url_for('live_article_detail', live_id=article.live_id) %}
+    {% elif article.article_id is defined %}
+        {% set card_url = url_for('article_detail', article_id=article.article_id) %}
+    {% else %}
+        {% set card_url = '#' %}
+    {% endif %}
+    <a class="card premium-card" href="{{ card_url }}"
+       data-article-key="{{ article.get('article_key', '') }}"
+       onclick="trackClick(this)">
+         {% if article.url_to_image %}
+             <img src="{{ article.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+         {% endif %}
+        <div class="card-body">
+            <div class="card-badges">
+                {% set v = article.get('verification', {}) %}
+                {% set vs = v.get('status', 'Checking') %}
+                {% if vs == 'Real' %}
+                    <span class="badge badge-verified">&#10003; REAL</span>
+                {% elif vs == 'Fake' %}
+                    <span class="badge badge-fake">&#10007; FAKE</span>
+                {% elif vs == 'Checking' %}
+                    <span class="badge badge-checking">CHECKING...</span>
+                {% else %}
+                    <span class="badge badge-unverified">UNVERIFIED</span>
+                {% endif %}
+                {% set reason = article.get('recommendation_reason', '') %}
+                {% if reason %}
+                    <span class="badge badge-reason">{{ reason }}</span>
+                {% endif %}
+                {% if article.is_live is defined and article.is_live %}
+                    <span class="badge badge-live">LIVE</span>
+                {% endif %}
+            </div>
+            <h3>{{ article.title }}</h3>
+            <p class="source">{{ article.get('source_name', '') }}{% if article.get('published_at') %} &middot; {{ article.published_at[:10] }}{% endif %}{% if article.get('category') %} &middot; {{ article.category }}{% endif %}</p>
+        </div>
+    </a>
+{% endmacro %}
+
+<section class="premium-banner">
+    <div class="premium-banner-text">
+        <h1>Your Personalised News</h1>
+        <p>Recommendations powered by your region, interests, language, and reading behaviour.</p>
+    </div>
+    <a href="{{ url_for('premium_preferences') }}" class="btn-preferences">Preferences</a>
+</section>
+
+{% if is_cold_start %}
+<section class="cold-start-notice">
+    <p><strong>New here?</strong> Set your region, language, and interests in
+    <a href="{{ url_for('premium_preferences') }}">Preferences</a> to get better recommendations.
+    The more you read, the smarter it gets.</p>
+</section>
+{% endif %}
+
+{# ── INFINITE SCROLL: Personalised Feed ── #}
+<section class="premium-section">
+    <h2>Personalised For You</h2>
+    <div id="premium-feed" class="article-grid"></div>
+    <div id="feed-loader" class="feed-loader">
+        <div class="feed-spinner"></div>
+        <span>Loading more stories...</span>
+    </div>
+    <div id="feed-end" class="feed-end" style="display:none">
+        <p>You've seen it all. Check back later for fresh stories.</p>
+    </div>
+</section>
+
+{# ── Regional News (static, server-rendered) ── #}
+{% if regional %}
+<section class="premium-section">
+    <h2>Regional News</h2>
+    <p class="hint">News relevant to {{ current_user.city or current_user.state_region or current_user.country or 'your region' }}</p>
+    <div class="article-grid">
+        {% for article in regional %}
+            {{ static_card(article) }}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{# ── Trending (static, server-rendered) ── #}
+{% if trending %}
+<section class="premium-section">
+    <h2>Trending Now</h2>
+    <div class="article-grid">
+        {% for article in trending %}
+            {{ static_card(article) }}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if trends %}
+<section class="premium-section trends-section">
+    <h2>Trending in {{ trend_region }}</h2>
+    <div class="trends-list">
+        {% for t in trends %}
+        <div class="trend-item">
+            <span class="trend-topic">{{ t.topic|title }}</span>
+            <span class="trend-count">{{ t.count }} articles</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<script>
+function trackClick(el) {
+    var key = el.getAttribute("data-article-key");
+    if (!key) return;
+    navigator.sendBeacon("{{ url_for('premium_track') }}", JSON.stringify({
+        article_key: key, action: "click"
+    }));
+}
+
+(function(){
+    var feed = document.getElementById("premium-feed");
+    var loader = document.getElementById("feed-loader");
+    var endMsg = document.getElementById("feed-end");
+    var offset = 0;
+    var BATCH = 10;
+    var loading = false;
+    var hasMore = true;
+    var seenKeys = [];
+
+    function buildCard(a) {
+        var url = a.detail_url || "#";
+        var v = a.verification || {};
+        var vs = v.status || "Checking";
+        var badge = "";
+        if (vs === "Real") badge = '<span class="badge badge-verified">&#10003; REAL</span>';
+        else if (vs === "Fake") badge = '<span class="badge badge-fake">&#10007; FAKE</span>';
+        else if (vs === "Checking") badge = '<span class="badge badge-checking">CHECKING...</span>';
+        else badge = '<span class="badge badge-unverified">UNVERIFIED</span>';
+
+        var reason = a.recommendation_reason
+            ? '<span class="badge badge-reason">' + a.recommendation_reason + '</span>'
+            : "";
+        var live = a.is_live ? '<span class="badge badge-live">LIVE</span>' : "";
+        var img = a.url_to_image
+            ? '<img src="' + a.url_to_image + '" alt="" class="card-img" loading="lazy" onerror="this.style.display=\'none\'">'
+            : "";
+        var date = a.published_at ? " &middot; " + a.published_at : "";
+        var cat = a.category ? " &middot; " + a.category : "";
+
+        var html = '<a class="card premium-card card-fadein" href="' + url + '"'
+            + ' data-article-key="' + (a.article_key || "") + '"'
+            + ' onclick="trackClick(this)">'
+            + img
+            + '<div class="card-body">'
+            + '<div class="card-badges">' + badge + reason + live + '</div>'
+            + '<h3>' + (a.title || "") + '</h3>'
+            + '<p class="source">' + (a.source_name || "") + date + cat + '</p>'
+            + '</div></a>';
+        return html;
+    }
+
+    function loadBatch() {
+        if (loading || !hasMore) return;
+        loading = true;
+        loader.style.display = "flex";
+
+        fetch("{{ url_for('premium_feed_api') }}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({offset: offset, limit: BATCH, exclude: seenKeys})
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            var articles = data.articles || [];
+            hasMore = data.has_more;
+            articles.forEach(function(a){
+                seenKeys.push(a.article_key);
+                feed.insertAdjacentHTML("beforeend", buildCard(a));
+            });
+            offset += articles.length;
+            loading = false;
+            loader.style.display = hasMore ? "flex" : "none";
+            if (!hasMore) endMsg.style.display = "block";
+
+            // Fire async verification for new CHECKING badges
+            verifyNew();
+        })
+        .catch(function(){
+            loading = false;
+            loader.style.display = "none";
+        });
+    }
+
+    function verifyNew() {
+        var badges = feed.querySelectorAll(".badge-checking");
+        badges.forEach(function(badge) {
+            var card = badge.closest(".premium-card");
+            if (!card) return;
+            var title = (card.querySelector("h3") || {}).textContent || "";
+            fetch("{{ url_for('verify_article') }}", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({title: title, description: ""})
+            }).then(function(r){ return r.json(); }).then(function(d){
+                var label = (d.label || "").toLowerCase();
+                if (label === "real") {
+                    badge.className = "badge badge-verified";
+                    badge.textContent = "\u2713 REAL";
+                } else if (label === "fake") {
+                    badge.className = "badge badge-fake";
+                    badge.textContent = "\u2717 FAKE";
+                } else {
+                    badge.className = "badge badge-unverified";
+                    badge.textContent = "UNVERIFIED";
+                }
+            }).catch(function(){});
+        });
+    }
+
+    // Scroll detection: load more when near bottom
+    function onScroll() {
+        if (!hasMore || loading) return;
+        var scrollY = window.scrollY || window.pageYOffset;
+        var viewH = window.innerHeight;
+        var docH = document.documentElement.scrollHeight;
+        if (scrollY + viewH >= docH - 400) loadBatch();
+    }
+    window.addEventListener("scroll", onScroll, {passive: true});
+
+    // Initial load
+    loadBatch();
+})();
+</script>
+
+{% endblock %}

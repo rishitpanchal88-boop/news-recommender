@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Manage Users - Admin{% endblock %}
+{% block content %}
+    <h1>Manage Users</h1>
+
+    <form method="GET" action="{{ url_for('admin_users') }}" class="user-search">
+        <input type="text" name="q" placeholder="Search by username or email..." value="{{ query|default('') }}">
+        <button type="submit">Search</button>
+        {% if query %}
+            <a href="{{ url_for('admin_users') }}" class="user-search-clear">Clear</a>
+        {% endif %}
+    </form>
+
+    <p class="hint">{{ users|length }} user(s) found</p>
+
+    {% for user in users %}
+    <div class="user-card">
+        <form method="POST" action="{{ url_for('admin_update_user', user_id=user.id) }}">
+            <div class="user-card-row">
+                <span class="user-card-id">#{{ user.id }}</span>
+
+                <div class="user-card-field">
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ user.username }}" required>
+                </div>
+
+                <div class="user-card-field">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ user.email }}" required>
+                </div>
+
+                <div class="user-card-check">
+                    <label><input type="checkbox" name="is_premium" {{ 'checked' if user.is_premium }}> Premium</label>
+                </div>
+
+                <div class="user-card-check">
+                    <label><input type="checkbox" name="is_admin" {{ 'checked' if user.is_admin }}> Admin</label>
+                </div>
+
+                <div class="user-card-field">
+                    <label>Reset Password</label>
+                    <input type="text" name="new_password" placeholder="Leave blank to keep">
+                </div>
+
+                <button type="submit" class="user-card-save">Save</button>
+            </div>
+            <div class="user-card-meta">Joined: {{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</div>
+        </form>
+    </div>
+    {% endfor %}
+
+    {% if not users %}
+        <p>No users matched your search.</p>
+    {% endif %}
+
+    <p style="margin-top: 24px;"><a href="{{ url_for('admin_dashboard') }}">&larr; Back to Dashboard</a></p>
+{% endblock %}

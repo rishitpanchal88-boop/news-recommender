@@ -1,0 +1,51 @@
+# Version control / editor cruft
+.git
+.gitignore
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints
+**/.ipynb_checkpoints
+.virtual_documents
+.kilo
+**/.kilo
+
+# Secrets -- never bake keys into an image
+**/.env
+.env
+
+# Databases are created at boot
+*.sqlite3
+**/instance/
+
+# Raw notebook inputs + root-level duplicates of the artifacts.
+# flask_app/ holds the copies the app actually reads (including
+# the .gz deploy artifacts), so the root copies only bloat the
+# build context.
+data.csv
+Fake.csv
+True.csv
+cleaned_data_with_fake_news.csv
+similarity_table.csv
+tfidf_matrix.npz
+tfidf_vectorizer.pkl
+fake_news_model.pkl
+fake_news_tfidf_vectorizer.pkl
+fake_news_confusion_matrix.png
+
+# Notebooks (regenerate artifacts, not needed at runtime)
+**/*.ipynb
+
+# Dev/test scripts
+flask_app/test_recs.py
+flask_app/test_premium.py
+flask_app/Untitled.ipynb
+
+# Junk
+instaloader_session
+jssnd
+anaconda_projects

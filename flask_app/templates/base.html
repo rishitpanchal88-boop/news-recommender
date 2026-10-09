@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}News Recommender{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%232563eb'/><text y='.9em' font-size='72' fill='white'>📰</text></svg>">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20261007">
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <!-- Google Translate: init function + lazy loader -->
+    <script>
+    function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'hi,en,gu,ml,te,ta,bn,mr',
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+        }, 'google_translate_element');
+    }
+    // Only load the Google Translate script if a translation is active
+    if (document.cookie.indexOf("googtrans=") !== -1 &&
+        document.cookie.indexOf("googtrans=;") === -1 &&
+        document.cookie.indexOf("googtrans=/en/en") === -1) {
+        var s = document.createElement("script");
+        s.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+        s.async = true;
+        document.head.appendChild(s);
+    }
+    </script>
+</head>
+<body>
+    <div class="reading-progress" id="readingProgress"></div>
+    <div class="topbar">
+        <span class="date-display">{{ today }}</span>
+        <div class="topbar-actions">
+            <button id="themeToggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode">
+                <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <button id="notifyBtn" class="notify-btn" type="button">Enable Notifications</button>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('home') }}" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="brand-icon"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg>
+            News Recommender
+        </a>
+
+        <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+
+        <form class="search-form" action="{{ url_for('search') }}" method="GET">
+            <input type="text" name="q" placeholder="Search articles, topics or categories..." value="{{ query|default('') }}">
+            <button type="submit">Search</button>
+        </form>
+
+        <div class="nav-links" id="navLinks">
+            <a href="{{ url_for('home') }}" class="nav-item {% if request.endpoint == 'home' %}active{% endif %}">
+                <span>Home</span>
+            </a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('bookmarks') }}" class="nav-item {% if request.endpoint == 'bookmarks' %}active{% endif %}">
+                    <span>🔖 Reading List</span>
+                    <span class="badge-nav-count" id="navBookmarkCount" {% if not user_bookmark_count %}style="display:none;"{% endif %}>{{ user_bookmark_count }}</span>
+                </a>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.is_premium %}
+                <a href="{{ url_for('premium_dashboard') }}" class="nav-item {% if request.endpoint == 'premium_dashboard' %}active{% endif %}">
+                    <span>⭐ Premium News</span>
+                </a>
+                <a href="{{ url_for('fake_checker') }}" class="nav-item {% if request.endpoint == 'fake_checker' %}active{% endif %}">
+                    <span>Fake News Checker</span>
+                </a>
+            {% else %}
+                <a href="{{ url_for('fake_checker') }}" class="nav-item {% if request.endpoint == 'fake_checker' %}active{% endif %}">
+                    <span>Fake News Checker</span>
+                </a>
+                <a href="{{ url_for('premium') }}" class="nav-item {% if request.endpoint == 'premium' %}active{% endif %}">
+                    <span>Premium</span>
+                </a>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <span>Admin Analytics</span>
+                </a>
+                <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                    <span>Users</span>
+                </a>
+            {% endif %}
+
+            <div class="nav-divider"></div>
+
+            {% if current_user.is_authenticated %}
+                <div class="user-pill">
+                    <span class="user-name">👤 {{ current_user.username }}</span>
+                    {% if current_user.is_admin %}
+                        <span class="badge-admin">ADMIN</span>
+                    {% endif %}
+                    {% if current_user.is_premium %}
+                        <span class="badge-premium">⭐ PREMIUM</span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn-login {% if request.endpoint == 'login' %}active{% endif %}">Login</a>
+                <a href="{{ url_for('signup') }}" class="btn-signup {% if request.endpoint == 'signup' %}active{% endif %}">Sign up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <nav class="category-bar">
+        {% for label, value in nav_categories %}
+            <a href="{{ url_for('category', category_value=value) }}">{{ label }}</a>
+        {% endfor %}
+    </nav>
+
+    <main class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">
+                    {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="site-footer-inner">
+            <span><span class="brand-dot"></span>News Recommender — trusted reading, curated daily.</span>
+            <span>&copy; {{ today.split(",")[-1].strip() if today and "," in today else "2026" }} News Recommender</span>
+        </div>
+    </footer>
+
+    <div class="gt-float" id="gtFloat">
+        <span class="gt-label">🌐</span>
+        <select id="langPicker" class="gt-select notranslate" aria-label="Translate page" translate="no">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="gu">Gujarati</option>
+            <option value="ml">Malayalam</option>
+            <option value="te">Telugu</option>
+            <option value="ta">Tamil</option>
+            <option value="bn">Bengali</option>
+            <option value="mr">Marathi</option>
+        </select>
+        <div id="google_translate_element" class="notranslate" style="display:none;" translate="no"></div>
+    </div>
+    <button class="scroll-top-btn" id="scrollTopBtn" aria-label="Scroll to top">↑</button>
+
+    <script>
+    // --- Theme toggle ---
+    const themeToggle = document.getElementById("themeToggle");
+    function applyThemeIcon() {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        themeToggle.querySelector(".icon-sun").style.display = isDark ? "none" : "block";
+        themeToggle.querySelector(".icon-moon").style.display = isDark ? "block" : "none";
+    }
+    applyThemeIcon();
+    themeToggle.addEventListener("click", () => {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        const next = isDark ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        applyThemeIcon();
+    });
+
+    // --- Hamburger menu ---
+    const hamburgerBtn = document.getElementById("hamburgerBtn");
+    const navLinks = document.getElementById("navLinks");
+    hamburgerBtn.addEventListener("click", () => {
+        hamburgerBtn.classList.toggle("active");
+        navLinks.classList.toggle("open");
+    });
+    // Close menu when a link is clicked
+    navLinks.querySelectorAll("a").forEach(link => {
+        link.addEventListener("click", () => {
+            hamburgerBtn.classList.remove("active");
+            navLinks.classList.remove("open");
+        });
+    });
+
+    // --- Notifications ---
+    const notifyBtn = document.getElementById("notifyBtn");
+
+    function updateNotifyButton() {
+        if (!("Notification" in window)) {
+            notifyBtn.textContent = "Notifications not supported";
+            notifyBtn.disabled = true;
+        } else if (Notification.permission === "granted") {
+            notifyBtn.textContent = "Notifications On";
+        } else if (Notification.permission === "denied") {
+            notifyBtn.textContent = "Notifications Blocked";
+        } else {
+            notifyBtn.textContent = "Enable Notifications";
+        }
+    }
+
+    function showTopHeadlineNotification() {
+        fetch("{{ url_for('api_top_headline') }}")
+            .then(res => res.json())
+            .then(data => {
+                const n = new Notification("Top Story", { body: data.title });
+                n.onclick = () => { window.focus(); window.location.href = data.url; };
+            });
+    }
+
+    notifyBtn.addEventListener("click", () => {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "granted") {
+            showTopHeadlineNotification();
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                updateNotifyButton();
+                if (permission === "granted") showTopHeadlineNotification();
+            });
+        }
+    });
+
+    updateNotifyButton();
+
+    // --- Reading progress bar ---
+    const progressBar = document.getElementById("readingProgress");
+    if (progressBar) {
+        window.addEventListener("scroll", () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (docHeight > 0 && scrollTop > 50) {
+                progressBar.classList.add("visible");
+                const pct = Math.min((scrollTop / docHeight) * 100, 100);
+                progressBar.style.width = pct + "%";
+            } else {
+                progressBar.classList.remove("visible");
+                progressBar.style.width = "0%";
+            }
+        });
+    }
+
+    // --- Scroll to top ---
+    const scrollTopBtn = document.getElementById("scrollTopBtn");
+    if (scrollTopBtn) {
+        window.addEventListener("scroll", () => {
+            if (window.scrollY > 400) {
+                scrollTopBtn.classList.add("visible");
+            } else {
+                scrollTopBtn.classList.remove("visible");
+            }
+        });
+        scrollTopBtn.addEventListener("click", () => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+    }
+
+    // --- Language Translator (cookie-based, no redirect, lazy script) ---
+    (function() {
+        var picker = document.getElementById("langPicker");
+        if (!picker) return;
+
+        function setCookie(name, val, days) {
+            var d = new Date();
+            d.setTime(d.getTime() + (days || 365) * 86400000);
+            document.cookie = name + "=" + val + ";expires=" + d.toUTCString() + ";path=/";
+        }
+
+        function applyLang(lang) {
+            if (lang === "en") {
+                setCookie("googtrans", "", 365);
+                window.location.reload();
+                return;
+            }
+            setCookie("googtrans", "/en/" + lang, 365);
+            window.location.reload();
+        }
+
+        picker.addEventListener("change", function() { applyLang(this.value); });
+
+        // Sync dropdown with active translation cookie
+        var m = document.cookie.match(/googtrans=\/en\/([a-z]{2})/);
+        if (m && m[1]) picker.value = m[1];
+
+        // Hide any Google Translate injected UI elements
+        function hideGoogleUI() {
+            document.querySelectorAll('.goog-te-banner-frame, .goog-te-banner-framebody, .skiptranslate, #goog-gt-tt, .goog-tooltip, .goog-text-highlight, .goog-te-spinner-pos, #gt-nvframe, .goog-te-gadget').forEach(function(el) {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.style.height = '0';
+                el.style.overflow = 'hidden';
+            });
+            if (document.body.style.top && document.body.style.top !== '0px' && document.body.style.top !== '0') {
+                document.body.style.top = '0';
+            }
+        }
+        hideGoogleUI();
+        setInterval(hideGoogleUI, 1000);
+    })();
+
+    // --- Global Toast Notification Helper ---
+    function showToast(message, type = "info") {
+        let container = document.getElementById("toastContainer");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "toastContainer";
+            container.className = "toast-container";
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement("div");
+        toast.className = `toast-item toast-${type}`;
+        
+        let icon = "ℹ️";
+        if (type === "success") icon = "✅";
+        else if (type === "error") icon = "⚠️";
+        else if (type === "bookmark") icon = "🔖";
+
+        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${message}</span>`;
+        container.appendChild(toast);
+
+        // Animate in
+        setTimeout(() => toast.classList.add("show"), 10);
+
+        // Auto remove after 3.5s
+        setTimeout(() => {
+            toast.classList.remove("show");
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    // --- Global Bookmark Toggle Function ---
+    window.toggleBookmark = function(event, btn, articleKey, meta = {}) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        {% if not current_user.is_authenticated %}
+            showToast("Please log in to save articles to your reading list.", "info");
+            setTimeout(() => { window.location.href = "{{ url_for('login') }}"; }, 1200);
+            return;
+        {% endif %}
+
+        const payload = Object.assign({ article_key: articleKey }, meta);
+
+        fetch("{{ url_for('toggle_bookmark') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, "error");
+                return;
+            }
+
+            // Toggle active visual state
+            if (data.bookmarked) {
+                btn.classList.add("bookmarked");
+                btn.setAttribute("title", "Remove from reading list");
+                showToast(data.message || "Saved to reading list! 🔖", "bookmark");
+            } else {
+                btn.classList.remove("bookmarked");
+                btn.setAttribute("title", "Save to reading list");
+                showToast(data.message || "Removed from reading list", "info");
+            }
+
+            // Update badge counter in navbar
+            const navBadge = document.getElementById("navBookmarkCount");
+            if (navBadge) {
+                if (data.count > 0) {
+                    navBadge.textContent = data.count;
+                    navBadge.style.display = "inline-flex";
+                } else {
+                    navBadge.style.display = "none";
+                }
+            }
+        })
+        .catch(err => {
+            console.error("Bookmark toggle failed:", err);
+            showToast("Could not update reading list.", "error");
+        });
+    };
+
+    // Keyboard shortcut: Press '/' to focus search bar
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+            e.preventDefault();
+            const searchInput = document.querySelector(".search-form input");
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+    </script>
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="{{ url_for('static', filename='tts.js') }}?v=20261003" defer></script>
+</body>
+</html>

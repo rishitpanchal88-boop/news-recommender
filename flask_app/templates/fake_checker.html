@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}AI Fact & Fake News Checker - News Recommender{% endblock %}
+{% block content %}
+    <div class="checker-header">
+        <h1>🛡️ AI Fact & Fake News Checker</h1>
+        <p class="landing-sub">Analyze headlines, viral claims, or full stories. Our multi-layer AI cross-validates claims against live global news reporting and semantic analysis.</p>
+    </div>
+
+    <!-- Quick test sample chips -->
+    <div class="sample-chips-wrap">
+        <span class="sample-chips-label">Try a sample claim:</span>
+        <button type="button" class="sample-chip" onclick="setClaim('Global climate summit establishes multi-billion dollar clean energy transition fund for emerging nations.')">🌱 Climate Pact</button>
+        <button type="button" class="sample-chip" onclick="setClaim('Scientists discover secret ancient pyramid underwater that completely halts aging process.')">⚠️ Miracle Pyramid</button>
+        <button type="button" class="sample-chip" onclick="setClaim('Central banks introduce unified digital settlement framework for cross-border payments.')">💳 Banking Framework</button>
+        <button type="button" class="sample-chip" onclick="setClaim('Drinking 5 cups of boiling lemon juice every hour cures all known viruses immediately.')">🍋 Viral Remedy</button>
+    </div>
+
+    <form method="POST" class="checker-form" id="checkerForm" onsubmit="showLoadingState()">
+        <textarea name="article_text" id="articleText" rows="5" placeholder="Paste a headline, social media post, rumor, or article text to fact-check..." required>{{ submitted_text }}</textarea>
+        <div class="checker-form-actions">
+            <button type="submit" class="cta-button" id="checkBtn">
+                <span id="btnText">Analyze & Verify Claim</span>
+            </button>
+            {% if submitted_text %}
+                <button type="button" class="btn-clear" onclick="clearClaim()">Clear</button>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if result %}
+    <div class="result-box result-{{ result.label|lower }}" id="resultBox">
+        <div class="result-header">
+            <div class="result-label-wrap">
+                <span class="result-icon">
+                    {% if result.label|lower == 'real' %}✔{% elif result.label|lower == 'fake' %}✖{% else %}?{% endif %}
+                </span>
+                <div>
+                    <span class="result-label">{{ result.label }} News</span>
+                    <span class="result-sublabel">Cross-Validated by {{ result.classifier|default('AI System') }}</span>
+                </div>
+            </div>
+            
+            {% if result.confidence is defined and result.confidence %}
+            <div class="confidence-badge-wrap">
+                <span class="confidence-text">Confidence: {{ (result.confidence * 100)|round(0)|int }}%</span>
+                <div class="confidence-meter-mini">
+                    <div class="confidence-fill confidence-fill-{{ result.label|lower }}" style="width: {{ (result.confidence * 100)|round(0) }}%;"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if result.analysis %}
+        <div class="result-analysis-wrap">
+            <h4>Verification Summary</h4>
+            <p class="result-analysis">{{ result.analysis }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Verification Pipeline Breakdown -->
+        <div class="verification-breakdown">
+            <div class="breakdown-step">
+                <span class="step-num">1</span>
+                <div class="step-info">
+                    <strong>Semantic Analysis</strong>
+                    <span>Sensationalism & coherence check</span>
+                </div>
+                <span class="step-status status-done">Done</span>
+            </div>
+            <div class="breakdown-step">
+                <span class="step-num">2</span>
+                <div class="step-info">
+                    <strong>Live Web Corroboration</strong>
+                    <span>{{ related_news|length }} live report(s) gathered</span>
+                </div>
+                <span class="step-status status-done">Done</span>
+            </div>
+            <div class="breakdown-step">
+                <span class="step-num">3</span>
+                <div class="step-info">
+                    <strong>Fact-Check Consensus</strong>
+                    <span>{{ result.label }} ({{ (result.confidence * 100)|round(0)|int }}% score)</span>
+                </div>
+                <span class="step-status status-done">Final</span>
+            </div>
+        </div>
+
+        <div class="result-footer-actions">
+            <button type="button" class="btn-copy-verdict" onclick="copyVerdict()">📋 Copy Fact-Check Report</button>
+        </div>
+    </div>
+    {% elif submitted_text %}
+    <p class="hint">Couldn't extract enough text to classify -- please paste a longer excerpt or complete sentence.</p>
+    {% endif %}
+
+    {% if related_news %}
+    <section class="related-news-section" style="margin-top: 36px;">
+        <h2>Corroborating News Coverage From The Web</h2>
+        <p class="hint">Live reports found from web feeds matching this query:</p>
+        <div class="related-news-list">
+            {% for news in related_news %}
+            <a class="related-news-card" href="{{ news.link }}" target="_blank" rel="noopener">
+                <h3>{{ news.title }}</h3>
+                <p class="related-news-meta">
+                    <strong>{{ news.source }}</strong>
+                    {% if news.date %} &middot; {{ news.date }}{% endif %}
+                </p>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if related_articles %}
+    <section class="recommendations" style="margin-top: 36px;">
+        <h2>Related Stories From Our Verified Archive</h2>
+        <div class="article-grid">
+            {% for rec in related_articles %}
+            <a class="card" href="{{ url_for('article_detail', article_id=rec.article_id) }}">
+                {% if rec.url_to_image %}
+                    <img src="{{ rec.url_to_image }}" alt="" class="card-img" loading="lazy" onerror="this.style.display='none'">
+                {% endif %}
+                <div class="card-body">
+                    <span class="badge">{{ rec.category or "Archive" }}</span>
+                    <h3>{{ rec.title }}</h3>
+                    <p class="source">{{ rec.source_name }} &middot; similarity {{ "%.2f"|format(rec.similarity_score) }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+<script>
+function setClaim(text) {
+    var ta = document.getElementById("articleText");
+    if (ta) {
+        ta.value = text;
+        ta.focus();
+    }
+}
+
+function clearClaim() {
+    var ta = document.getElementById("articleText");
+    if (ta) {
+        ta.value = "";
+        ta.focus();
+    }
+}
+
+function showLoadingState() {
+    var btn = document.getElementById("checkBtn");
+    var txt = document.getElementById("btnText");
+    if (btn && txt) {
+        btn.disabled = true;
+        txt.innerHTML = '<span class="spinner-sm"></span> Cross-checking evidence...';
+        btn.form.submit();
+    }
+}
+
+function copyVerdict() {
+    var label = "{{ result.label if result else '' }}";
+    var analysis = "{{ result.analysis|replace('"', '\\"') if result and result.analysis else '' }}";
+    var text = "🛡️ News Recommender AI Fact-Check:\nVerdict: " + label + "\nDetails: " + analysis;
+
+    navigator.clipboard.writeText(text).then(function() {
+        showToast("Fact-check report copied to clipboard! 📋", "success");
+    }).catch(function() {
+        showToast("Could not copy report.", "error");
+    });
+}
+</script>
+
+{% endblock %}

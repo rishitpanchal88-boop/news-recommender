@@ -1,0 +1,51 @@
+<!-- Text-to-Speech (TTS) Audio Player Component -->
+<div class="tts-player" id="ttsPlayer" aria-label="Audio Reader">
+    <div class="tts-header">
+        <div class="tts-title-wrap">
+            <span class="tts-icon">🎧</span>
+            <div>
+                <span class="tts-status" id="ttsStatus">Listen to Article</span>
+                <span class="tts-subtext">AI Text-to-Speech</span>
+            </div>
+        </div>
+        <div class="tts-wave" id="ttsWave">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <div class="tts-controls">
+        <button type="button" class="tts-btn tts-btn-play" id="ttsPlayBtn" aria-label="Play or Pause">
+            <svg id="ttsPlayIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <svg id="ttsPauseIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            <span id="ttsPlayBtnLabel">Play Audio</span>
+        </button>
+
+        <button type="button" class="tts-btn tts-btn-stop" id="ttsStopBtn" aria-label="Stop audio" title="Stop">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="5" y="5" width="14" height="14" rx="2"></rect>
+            </svg>
+        </button>
+
+        <div class="tts-speed-group" aria-label="Speed controls">
+            <button type="button" class="tts-speed-btn" data-speed="0.75">0.75×</button>
+            <button type="button" class="tts-speed-btn active" data-speed="1.0">1×</button>
+            <button type="button" class="tts-speed-btn" data-speed="1.25">1.25×</button>
+            <button type="button" class="tts-speed-btn" data-speed="1.5">1.5×</button>
+        </div>
+
+        <div class="tts-voice-wrap">
+            <select id="ttsVoiceSelect" class="tts-voice-select" aria-label="Select reading voice">
+                <option value="">Default Voice</option>
+            </select>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Go Premium{% endblock %}
+{% block content %}
+    <section class="landing-hero">
+        <h1>Know what's real. Instantly.</h1>
+        <p class="landing-sub">Premium unlocks personalised news with real/fake verification on every article, powered by AI.</p>
+    </section>
+
+    <section class="pricing-card">
+        <span class="price-tag">₹249<span class="price-period">/month</span></span>
+
+        <ul class="feature-list">
+            <li>Personalised news based on your region, interests & reading behaviour</li>
+            <li>REAL / FAKE / UNVERIFIED labels on every article</li>
+            <li>Regional & local news from your city and state</li>
+            <li>Language-aware recommendations</li>
+            <li>Unlimited Fake News Checker</li>
+            <li>Cancel anytime</li>
+        </ul>
+
+        {% if current_user.is_authenticated and current_user.is_premium %}
+            <p class="hint">You're already a premium subscriber!</p>
+            <a href="{{ url_for('premium_dashboard') }}" class="cta-button">Open Personalised News</a>
+            <a href="{{ url_for('fake_checker') }}" class="cta-button" style="background: var(--ink); color: var(--surface); margin-top: 8px;">Fake News Checker</a>
+        {% else %}
+            <form method="POST" action="{{ url_for('premium_subscribe') }}">
+                <button type="submit" class="cta-button">Subscribe Now</button>
+            </form>
+            <p class="hint">Demo checkout only -- no real payment is processed.</p>
+        {% endif %}
+    </section>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ full_title }}{% endblock %}
+{% block content %}
+    <p class="hint"><a href="{{ back_url }}">&larr; Back to article</a></p>
+
+    <article class="article-detail">
+        <h1>{{ full_title }}</h1>
+        <p class="source">{{ article.source_name }} &middot; {{ article.published_at }}</p>
+
+        {% include "tts_player.html" %}
+
+        {% if article.url_to_image %}
+            <img src="{{ article.url_to_image }}" alt="" class="detail-img" loading="lazy" onerror="this.style.display='none'">
+        {% endif %}
+
+        {% if full_text %}
+            <div class="body-text">
+                {% for para in full_text.split("\n\n") %}
+                    <p>{{ para }}</p>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="hint">
+                We couldn't fetch the full text from the publisher (it may be
+                paywalled or blocked).
+                <a href="{{ article.url }}" target="_blank" rel="noopener">Open it on the original site</a> instead.
+            </p>
+        {% endif %}
+
+        <p class="hint">Full text sourced from {{ article.source_name }}. <a href="{{ article.url }}" target="_blank" rel="noopener">View on original site</a></p>
+    </article>
+{% endblock %}

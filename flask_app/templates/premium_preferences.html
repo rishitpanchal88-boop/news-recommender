@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Premium Preferences{% endblock %}
+{% block content %}
+
+<section class="preferences-page">
+    <h1>Personalisation Preferences</h1>
+    <p class="hint">Set your region, language, and topic interests to improve recommendations. The system also learns from your reading behaviour over time.</p>
+
+    <form method="POST" class="preferences-form">
+        <div class="pref-group">
+            <label>Country</label>
+            <select name="country">
+                <option value="India" {% if current_user.country == 'India' %}selected{% endif %}>India</option>
+                <option value="USA" {% if current_user.country == 'USA' %}selected{% endif %}>USA</option>
+                <option value="UK" {% if current_user.country == 'UK' %}selected{% endif %}>UK</option>
+                <option value="" {% if not current_user.country %}selected{% endif %}>-- Select --</option>
+            </select>
+        </div>
+
+        <div class="pref-group">
+            <label>State / Region</label>
+            <input type="text" name="state_region" value="{{ current_user.state_region or '' }}"
+                   placeholder="e.g. Gujarat, Maharashtra, Karnataka">
+        </div>
+
+        <div class="pref-group">
+            <label>City</label>
+            <input type="text" name="city" value="{{ current_user.city or '' }}"
+                   placeholder="e.g. Ahmedabad, Mumbai, Bengaluru">
+        </div>
+
+        <div class="pref-group">
+            <label>Preferred Language</label>
+            <select name="language">
+                <option value="en" {% if current_user.preferred_language == 'en' %}selected{% endif %}>English</option>
+                <option value="hi" {% if current_user.preferred_language == 'hi' %}selected{% endif %}>Hindi</option>
+                <option value="gu" {% if current_user.preferred_language == 'gu' %}selected{% endif %}>Gujarati</option>
+                <option value="mr" {% if current_user.preferred_language == 'mr' %}selected{% endif %}>Marathi</option>
+                <option value="bn" {% if current_user.preferred_language == 'bn' %}selected{% endif %}>Bengali</option>
+                <option value="ta" {% if current_user.preferred_language == 'ta' %}selected{% endif %}>Tamil</option>
+                <option value="te" {% if current_user.preferred_language == 'te' %}selected{% endif %}>Telugu</option>
+                <option value="kn" {% if current_user.preferred_language == 'kn' %}selected{% endif %}>Kannada</option>
+                <option value="ml" {% if current_user.preferred_language == 'ml' %}selected{% endif %}>Malayalam</option>
+                <option value="pa" {% if current_user.preferred_language == 'pa' %}selected{% endif %}>Punjabi</option>
+            </select>
+        </div>
+
+        <div class="pref-group">
+            <label>Topic Interests</label>
+            <p class="hint" style="margin-top:0">Comma-separated. Examples: cricket, ai, technology, politics, business, health, science, entertainment</p>
+            <input type="text" name="topics"
+                   value="{{ interests.keys()|join(', ') if interests else '' }}"
+                   placeholder="e.g. cricket, ai, technology, business">
+        </div>
+
+        <button type="submit" class="cta-button">Save Preferences</button>
+    </form>
+
+    {% if interests %}
+    <div class="current-interests">
+        <h2>Your Interest Scores</h2>
+        <p class="hint">These are learned from your reading behaviour and update gradually.</p>
+        <div class="interest-bars">
+            {% for topic, score in interests.items() %}
+            <div class="interest-row">
+                <span class="interest-label">{{ topic|title }}</span>
+                <div class="interest-bar-bg">
+                    <div class="interest-bar-fill" style="width: {{ (score * 100)|round(0) }}%"></div>
+                </div>
+                <span class="interest-score">{{ (score * 100)|round(0) }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('premium_dashboard') }}" class="back-link">← Back to Dashboard</a>
+</section>
+
+{% endblock %}

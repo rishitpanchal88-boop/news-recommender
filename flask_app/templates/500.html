@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Server Error (500) - News Recommender{% endblock %}
+{% block content %}
+
+<div class="error-page">
+    <div class="error-code" style="background: linear-gradient(135deg, var(--bad), #f87171); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">500</div>
+    <h1>Something Went Wrong</h1>
+    <p class="landing-sub">Our server encountered an unexpected error while processing your request. Please try refreshing or return to the main feed.</p>
+
+    <div class="error-actions">
+        <a href="javascript:location.reload()" class="cta-button">Try Again ↻</a>
+        <a href="{{ url_for('home') }}" class="btn-preferences" style="background: var(--surface); border: 1px solid var(--line-strong);">Home Feed</a>
+    </div>
+</div>
+
+{% endblock %}
